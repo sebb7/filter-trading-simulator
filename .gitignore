@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+*.Rda
+*.csv
+!wse_listed_stocks_till_2017.csv
+!index_company_isins.Rda
