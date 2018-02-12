@@ -100,6 +100,15 @@ Trade <- function(table, open_prices, close_prices, filter, transaction_cost){
       table$cash[day] <-
         table$cash[day] + (whole_transaction * (1 - transaction_cost))
       
+    }else if(action == "delisted"){
+      whole_transaction <-
+        (table$shares[day] * close_prices[(day - 1), company_name][[1]])
+      table$invested[day] <- 0
+      table$shares[day] <- 0
+      
+      # Include transaction cost
+      table$cash[day] <-
+        table$cash[day] + (whole_transaction * (1 - transaction_cost))
     }
     # Calculate end day position with close price and cash
     table$end_day_position[day] <-
@@ -114,7 +123,7 @@ CheckAction <- function(day, company, filter){
   # Returns 'delisted' when company was delisted
   # Returns "wait" when nothing changes
   if(is.na(close_prices[(day - 1), company][[1]])){
-    return(NA)
+    return("wait")
   }else if(is.na(open_prices[(day), company][[1]])){
     return("delisted")
   }

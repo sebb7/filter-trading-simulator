@@ -15,7 +15,7 @@ tickers <- sapply(index_company_isins, function(isin)
 initial_date <- as.Date("2007-03-16")
 
 # User configuration
-selected_comapnies <- c("PKO")
+selected_comapnies <- c("PKO", "KGH", "PZU", "MBK")
 filter <- 0.01
 funds <- 10000 #PLN
 transaction_cost <- 0.002
@@ -25,8 +25,8 @@ DownloadHistData(selected_comapnies)
 
 # To refresh your data delete your quotation files from 
 # companies_and_index_historical_data directory
-#file.remove(list.files("companies_and_index_historical_data",full.names=TRUE))
-#DownloadHistData(tickers_to_download)
+# file.remove(list.files("companies_and_index_historical_data",full.names=TRUE))
+# DownloadHistData(selected_comapnies)
 
 # Create combined xts for both close and open prices; consider initial_date
 open_prices <- TransformDataToCombinedXts('Open')[paste(initial_date, "/")]
@@ -52,4 +52,3 @@ results <- lapply(selected_comapnies, function(company)
         filter, transaction_cost))
 
 names(results) <- selected_comapnies
-View(results[[1]])
