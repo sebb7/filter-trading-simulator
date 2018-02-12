@@ -2,9 +2,9 @@ DownloadHistData <- function(ticker_vector){
   # Downloads only non-existing files from stooq.com
   # Returns nothing
   # Saves the files in companies_and_index_historical_data directory
-  companies_having_data <- unlist(lapply(list.files(
+  companies_having_data <- sapply(list.files(
     "companies_and_index_historical_data"), gsub, pattern = ".csv", 
-    replacement = ""))
+    replacement = "")
   
   for(ticker in ticker_vector){
     if(!(ticker %in% companies_having_data)){
@@ -43,4 +43,40 @@ TransformDataToCombinedXts <- function(price_type){
   
   all_prices <- Reduce(function(x, y) merge(x, y, all=TRUE), file_list)
   return(all_prices)
+}
+
+CreateTableForCompany <- function(company){
+  # Create table with all information and specification needed for each company
+  # Returns xts
+  temp_df <- data.frame(matrix(0, nrow = 1, ncol = 6))
+  colnames(temp_df) <- c("Date", "decision", "shares", "invested", "cash",
+                         "end_day_position")
+  temp_df$Date <- initial_date
+  temp_df$cash <- funds/length(selected_comapnies)
+  temp_df <- xts(temp_df[,-1], order.by =
+                   as.Date(temp_df$Date))
+  return(temp_df)
+}
+
+CheckAction <- function(day, company, filter){
+  # Calculates the percentage change between open and close price
+  # Returns string 'buy' or 'sell'
+  # Returns 'delisted' when company was delisted
+  # Returns NA when nothing changes
+  if(is.na(close_prices[(day - 1), company][[1]])){
+    return(NA)
+  }else if(is.na(open_prices[(day), company][[1]])){
+    return('delisted')
+  }
+  percentage_change <-
+    (close_prices[(day - 1), company][[1]] - open_prices[day, company][[1]])/
+      (close_prices[(day - 1), company][[1]])
+  if(percentage_change >= filter){
+    return('buy')
+  }
+  return('sell')
+}
+
+Trade <- function(x){
+
 }
