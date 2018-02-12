@@ -15,10 +15,10 @@ tickers <- sapply(index_company_isins, function(isin)
 initial_date <- as.Date("2007-03-16")
 
 # User configuration
-selected_comapnies <- c("PKO", "KGH", "BZW")
+selected_comapnies <- c("PKO")
 filter <- 0.01
 funds <- 10000 #PLN
-transaction_cost <- 0.02
+transaction_cost <- 0.002
 
 # Download only non-existing files from stooq.com
 DownloadHistData(selected_comapnies)
@@ -38,11 +38,18 @@ close_prices <- TransformDataToCombinedXts('Close')[paste(initial_date, "/")]
 # 'end_day_position' column consists of multiplying number of bought stocks by 
 # close price
 for(company in selected_comapnies){
-  assign(paste(company, "_table", sep = ""), CreateTableForCompany(company))
-  rm()
+  assign(paste(company, "_table", sep = ""),
+         CreateTableForCompany(company, initial_date,
+                               funds/length(selected_comapnies)))
+  rm(company)
 }
 
-# Start trading
+# Start trading 
 
 # For each company
-results <- lapply(ls(pattern = "*_table"), function(table) Trade(get(table)))
+results <- lapply(selected_comapnies, function(company)
+  Trade(get(paste(company, "_table", sep = "")), open_prices, close_prices,
+        filter, transaction_cost))
+
+names(results) <- selected_comapnies
+View(results[[1]])

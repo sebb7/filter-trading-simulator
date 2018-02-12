@@ -45,38 +45,93 @@ TransformDataToCombinedXts <- function(price_type){
   return(all_prices)
 }
 
-CreateTableForCompany <- function(company){
-  # Create table with all information and specification needed for each company
-  # Returns xts
-  temp_df <- data.frame(matrix(0, nrow = 1, ncol = 6))
-  colnames(temp_df) <- c("Date", "decision", "shares", "invested", "cash",
-                         "end_day_position")
-  temp_df$Date <- initial_date
-  temp_df$cash <- funds/length(selected_comapnies)
-  temp_df <- xts(temp_df[,-1], order.by =
-                   as.Date(temp_df$Date))
+CreateTableForCompany <- function(company, date, cash){
+  # Create table with all information and specification needed for each
+  # company
+  # Returns data.frame
+  temp_df <- data.frame(matrix(0, nrow = 1, ncol = 7))
+  colnames(temp_df) <- c("Date", "company_name","decision", "shares",
+                         "invested", "cash", "end_day_position")
+  temp_df$company_name <- company
+  temp_df$Date <- date
+  temp_df$decision <- NA
+  temp_df$cash <- cash
   return(temp_df)
+}
+
+Trade <- function(table, open_prices, close_prices, filter, transaction_cost){
+  # Simulates trading for given period
+  company_name <- table$company_name[1]
+  for(day in 2:length(index(open_prices))){
+    # Add another row for given day
+    table <- rbind(table, table[day - 1, ])
+    rownames(table) <- NULL
+    table$Date[day] <- index(open_prices)[day]
+      
+    # Check buy/sell action for given day and add it to new row
+    action <- CheckAction(day, company_name, filter)
+    table$decision[day] <- action
+  
+    # Buy or sell and calculate position according to the taken action
+    open_price <- open_prices[(day), company_name][[1]]
+    close_price <- close_prices[(day), company_name][[1]]
+    if(action == "buy"){
+      # Buy as many shares as possible for open price and for given transaction
+      # cost
+      shares_to_buy <- CalcNumberOfSharesToBuy(table$cash[day],
+                                               open_price, transaction_cost)
+      table$shares[day] <- table$shares[day] + shares_to_buy
+        
+      # Calculate whole transaction cost
+      whole_transaction <- (shares_to_buy * open_price)
+      table$invested[day] <- table$invested[day] + whole_transaction
+      
+      # Include transaction cost
+      table$cash[day] <-
+        table$cash[day] - (whole_transaction * (1 + transaction_cost))
+      
+    }else if(action == "sell"){
+      # Calculate whole transaction cost
+      whole_transaction <- (table$shares[day] * open_price)
+      table$invested[day] <- 0
+      table$shares[day] <- 0
+      
+      # Include transaction cost
+      table$cash[day] <-
+        table$cash[day] + (whole_transaction * (1 - transaction_cost))
+      
+    }
+    # Calculate end day position with close price and cash
+    table$end_day_position[day] <-
+      table$shares[day] * close_price + table$cash[day]
+  }
+  return(table)
 }
 
 CheckAction <- function(day, company, filter){
   # Calculates the percentage change between open and close price
   # Returns string 'buy' or 'sell'
   # Returns 'delisted' when company was delisted
-  # Returns NA when nothing changes
+  # Returns "wait" when nothing changes
   if(is.na(close_prices[(day - 1), company][[1]])){
     return(NA)
   }else if(is.na(open_prices[(day), company][[1]])){
-    return('delisted')
+    return("delisted")
   }
   percentage_change <-
     (close_prices[(day - 1), company][[1]] - open_prices[day, company][[1]])/
-      (close_prices[(day - 1), company][[1]])
+    (close_prices[(day - 1), company][[1]])
   if(percentage_change >= filter){
-    return('buy')
+    return("buy")
+  }else if(percentage_change <= -filter){
+    return("sell")
   }
-  return('sell')
+  return("wait")
 }
 
-Trade <- function(x){
-
+CalcNumberOfSharesToBuy <- function(available_cash, price, cost){
+  # Calculates number of shares which can be buy with given transaction cost
+  # Return number of shares
+  number_of_shares <- floor(available_cash/(price * (1 + cost)))
+  return(number_of_shares)
 }
