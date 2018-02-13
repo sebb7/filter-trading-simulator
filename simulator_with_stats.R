@@ -6,26 +6,30 @@ no_cores <- detectCores() - 1
 source("script-funs.R")
 
 # Get all comapnies which were included in index
+# Obtained from www.gpw.pl/historical-index-portfolios and 
+# transformed to R-data with pdf-tables-to-R-data.R script from
+# github.com/sebb7/portfolio-analyzer.
 load("R_data/index_company_isins.Rda")
 
 # Change company names to tickers
 listed_stocks_data <- read.csv("wse_listed_stocks_till_2017.csv",
                                stringsAsFactors = FALSE)
-tickers <- sapply(index_company_isins, function(isin)
+index_tickers <- sapply(index_company_isins, function(isin)
   listed_stocks_data[listed_stocks_data$ISIN == isin, 2])
 
-initial_date <- as.Date("2007-03-16")
+# Select companies for simulation (max = 36)
+selected_comapnies <- sample(unname(index_tickers), 6)
 
 # User configuration
-selected_comapnies <- c("PKO", "KGH", "PZU", "MBK")
-filter <- 0.01
+filter <- 0.005
 funds <- 10000 #PLN
-transaction_cost <- 0.003
-
+transaction_cost <- 0.000
 # Make simulation more realistic:
 # price rises + handicap while buying
 # price falls - handicap while selling
-handicap <- 0.005
+handicap <- 0.000
+
+initial_date <- as.Date("2007-03-16")
 
 # Download only non-existing files from stooq.com
 DownloadHistData(selected_comapnies)
@@ -74,9 +78,3 @@ time.taken <- end.time - start.time
 time.taken
 
 names(results) <- selected_comapnies
-
-# Get stats for results
-View(results[[1]])
-View(results[[4]])
-View(results[[3]])
-View(results[[2]])

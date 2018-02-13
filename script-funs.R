@@ -145,4 +145,3 @@ CheckAction <- function(day, company, filter){
   }
   return("wait")
 }
-
