@@ -1,4 +1,6 @@
 library("xts")
+library("parallel")
+no_cores <- detectCores() - 1
 
 # Add functions
 source("script-funs.R")
@@ -18,7 +20,12 @@ initial_date <- as.Date("2007-03-16")
 selected_comapnies <- c("PKO", "KGH", "PZU", "MBK")
 filter <- 0.01
 funds <- 10000 #PLN
-transaction_cost <- 0.002
+transaction_cost <- 0.003
+
+# Make simulation more realistic:
+# price rises + handicap while buying
+# price falls - handicap while selling
+handicap <- 0.005
 
 # Download only non-existing files from stooq.com
 DownloadHistData(selected_comapnies)
@@ -46,9 +53,30 @@ for(company in selected_comapnies){
 
 # Start trading 
 
-# For each company
+# For each company - parallel version with time of execution
+cl <- makeCluster(no_cores, type="FORK")
+start.time <- Sys.time()
+results <- parLapply(cl, selected_comapnies, function(company)
+  Trade(get(paste(company, "_table", sep = "")), open_prices, close_prices,
+        filter, transaction_cost, handicap))
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+stopCluster(cl)
+
+# For each company - no-parallel version with time of execution
+start.time <- Sys.time()
 results <- lapply(selected_comapnies, function(company)
   Trade(get(paste(company, "_table", sep = "")), open_prices, close_prices,
-        filter, transaction_cost))
+        filter, transaction_cost, handicap))
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
 
 names(results) <- selected_comapnies
+
+# Get stats for results
+View(results[[1]])
+View(results[[4]])
+View(results[[3]])
+View(results[[2]])

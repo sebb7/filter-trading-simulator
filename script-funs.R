@@ -59,7 +59,8 @@ CreateTableForCompany <- function(company, date, cash){
   return(temp_df)
 }
 
-Trade <- function(table, open_prices, close_prices, filter, transaction_cost){
+Trade <- function(table, open_prices, close_prices, filter, transaction_cost,
+                  handicap){
   # Simulates trading for given period
   company_name <- table$company_name[1]
   for(day in 2:length(index(open_prices))){
@@ -75,15 +76,18 @@ Trade <- function(table, open_prices, close_prices, filter, transaction_cost){
     # Buy or sell and calculate position according to the taken action
     open_price <- open_prices[(day), company_name][[1]]
     close_price <- close_prices[(day), company_name][[1]]
+    
     if(action == "buy"){
       # Buy as many shares as possible for open price and for given transaction
       # cost
-      shares_to_buy <- CalcNumberOfSharesToBuy(table$cash[day],
-                                               open_price, transaction_cost)
+      shares_to_buy <-
+        floor(table$cash[day]/
+                (open_price * (1 + transaction_cost) * (1 + handicap)))
+        
       table$shares[day] <- table$shares[day] + shares_to_buy
         
-      # Calculate whole transaction cost
-      whole_transaction <- (shares_to_buy * open_price)
+      # Calculate whole transaction cost and include handicap
+      whole_transaction <- (shares_to_buy * (open_price * (1 + handicap)))
       table$invested[day] <- table$invested[day] + whole_transaction
       
       # Include transaction cost
@@ -91,16 +95,17 @@ Trade <- function(table, open_prices, close_prices, filter, transaction_cost){
         table$cash[day] - (whole_transaction * (1 + transaction_cost))
       
     }else if(action == "sell"){
-      # Calculate whole transaction cost
-      whole_transaction <- (table$shares[day] * open_price)
+      # Calculate whole transaction cost and include handicap
+      whole_transaction <- (table$shares[day] * (open_price * (1 - handicap)))
       table$invested[day] <- 0
       table$shares[day] <- 0
       
-      # Include transaction cost
+      # Include transaction cost 
       table$cash[day] <-
         table$cash[day] + (whole_transaction * (1 - transaction_cost))
       
     }else if(action == "delisted"){
+      # Calculate whole transaction cost and include handicap
       whole_transaction <-
         (table$shares[day] * close_prices[(day - 1), company_name][[1]])
       table$invested[day] <- 0
@@ -127,9 +132,12 @@ CheckAction <- function(day, company, filter){
   }else if(is.na(open_prices[(day), company][[1]])){
     return("delisted")
   }
+  
+  # Calculate percentage change
   percentage_change <-
-    (close_prices[(day - 1), company][[1]] - open_prices[day, company][[1]])/
+    (open_prices[day, company][[1]] - close_prices[(day - 1), company][[1]])/
     (close_prices[(day - 1), company][[1]])
+  
   if(percentage_change >= filter){
     return("buy")
   }else if(percentage_change <= -filter){
@@ -138,9 +146,3 @@ CheckAction <- function(day, company, filter){
   return("wait")
 }
 
-CalcNumberOfSharesToBuy <- function(available_cash, price, cost){
-  # Calculates number of shares which can be buy with given transaction cost
-  # Return number of shares
-  number_of_shares <- floor(available_cash/(price * (1 + cost)))
-  return(number_of_shares)
-}
